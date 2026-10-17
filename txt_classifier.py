@@ -148,7 +148,9 @@ def main():
     parser.add_argument('--batch_size', '--batch-size', type=int, default=1)
     parser.add_argument('--max_len', '--max-len', type=int, default=-1)
     parser.add_argument('--n_epochs', '--epochs', type=int, default=5)
-    parser.add_argument('--learning_rate', '--learning-rate', type=float, default=5.0)
+    parser.add_argument('--learning_rate', '--learning-rate', type=float, default=None,
+                        help='Default: 5.0 for SGD, 0.001 for Adam')
+    parser.add_argument('--optimizer', choices=['sgd', 'adam'], default='adam')
     parser.add_argument('--embed_dim', type=int, default=64)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--device', choices=['cpu', 'cuda'], default=None)
@@ -207,8 +209,13 @@ def main():
     model = TextClassificationModel(corpus_info.vocab_size, args.embed_dim,
                                     corpus_info.num_labels, corpus_info.pad_idx).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
-    # TODO Task 3.3: switch to Adam with its default learning rate for the second run.
+        # Task 3.3: pick the optimizer from the command line (Adam is the default from now on).
+    if args.learning_rate is None:
+        args.learning_rate = 5.0 if args.optimizer == 'sgd' else 0.001
+    if args.optimizer == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     # TODO Task 3.4: replace the baseline with your own LSTM classifier.
     start = time.perf_counter()
     for epoch in range(1, args.n_epochs + 1):
