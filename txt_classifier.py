@@ -126,7 +126,25 @@ class TextClassificationModel(nn.Module):
 
     def forward(self, text):
         return self.fc(self.embedding(text))
+class LSTMClassifier(nn.Module):
+    """Task 3.4: Embedding -> bidirectional LSTM -> max pooling over time -> Linear."""
+    def __init__(self, vocab_size, embed_dim, hidden_dim, num_class, pad_idx):
+        super().__init__()
+        # nn.Embedding keeps one vector per token position (unlike EmbeddingBag).
+        # padding_idx makes the <PAD> vector stay all zeros.
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=pad_idx)
+        # batch_first=True means inputs are shaped (batch, tokens, features).
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True, bidirectional=True)
+        # Pooling over the token dimension keeps the strongest value per feature.
+        self.pool = nn.AdaptiveMaxPool1d(1)
+        self.fc = nn.Linear(2 * hidden_dim, num_class)  # x2 because of two directions
 
+    def forward(self, text):
+        emb = self.embedding(text)               # (batch, tokens, embed_dim)
+        out, _ = self.lstm(emb)                  # (batch, tokens, 2 * hidden_dim)
+        out = out.transpose(1, 2)                # (batch, 2 * hidden_dim, tokens)
+        pooled = self.pool(out).squeeze(-1)      # (batch, 2 * hidden_dim)
+        return self.fc(pooled)                   # (batch, num_class)
 
 def evaluate(loader, model, criterion, device):
     model.eval()
@@ -156,6 +174,8 @@ def main():
     parser.add_argument('--device', choices=['cpu', 'cuda'], default=None)
     parser.add_argument('--length_histogram', '--length-histogram', action='store_true')
     parser.add_argument('--output', default='txt_model.pth')
+    parser.add_argument('--model', choices=['bow', 'lstm'], default='bow')
+    parser.add_argument('--hidden_dim', type=int, default=64)
     args = parser.parse_args()
     if args.batch_size < 1 or args.n_epochs < 1 or args.max_len == 0 or args.max_len < -1:
         parser.error('Use positive batch size/epochs and max_len=-1 or a positive integer.')
@@ -206,8 +226,12 @@ def main():
         loaders[split] = DataLoader(dataset, batch_size=args.batch_size,
                                    shuffle=(split == 'train'),
                                    collate_fn=PadSequence(corpus_info.pad_idx))
-    model = TextClassificationModel(corpus_info.vocab_size, args.embed_dim,
-                                    corpus_info.num_labels, corpus_info.pad_idx).to(device)
+    if args.model == 'lstm':
+            model = LSTMClassifier(corpus_info.vocab_size, args.embed_dim, args.hidden_dim,
+                               corpus_info.num_labels, corpus_info.pad_idx).to(device)
+    else:
+        model = TextClassificationModel(corpus_info.vocab_size, args.embed_dim,
+                                        corpus_info.num_labels, corpus_info.pad_idx).to(device)
     criterion = nn.CrossEntropyLoss()
         # Task 3.3: pick the optimizer from the command line (Adam is the default from now on).
     if args.learning_rate is None:
