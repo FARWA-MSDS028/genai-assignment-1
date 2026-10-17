@@ -76,8 +76,8 @@ class TruncateToMaxLen:
         self.max_len = max_len
 
     def __call__(self, tokens):
-        # TODO Task 3.2: truncate tokens to self.max_len.
-        raise NotImplementedError('Implement TruncateToMaxLen for Task 3.2')
+        # Task 3.2: keep only the first max_len tokens (shorter articles stay as they are).
+        return tokens[:self.max_len]
 
 
 class PadToMaxLen:
@@ -85,8 +85,8 @@ class PadToMaxLen:
         self.max_len, self.pad_idx = max_len, pad_idx
 
     def __call__(self, tokens):
-        # TODO Task 3.2: pad tokens to self.max_len with self.pad_idx.
-        raise NotImplementedError('Implement PadToMaxLen for Task 3.2')
+        # Task 3.2: add pad tokens to the end until the article has exactly max_len tokens.
+        return tokens + [self.pad_idx] * (self.max_len - len(tokens))
 
 
 class Compose:
