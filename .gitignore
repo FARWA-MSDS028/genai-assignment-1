@@ -1,0 +1,12 @@
+# Virtual environment (never upload this)
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Model checkpoints go to Google Drive, not GitHub
+*.pth
+
+# Weights & Biases local logs
+wandb/
